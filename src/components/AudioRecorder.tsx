@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import styles from "./AudioRecorder.module.css";
+import LongPressButton from "./LongPressButton";
 
 const mimeType = "audio/webm";
 
@@ -10,10 +11,6 @@ const AudioRecorder = () => {
 	const [audioChunks, setAudioChunks] = useState<Blob[]>([]);
 
 	const mediaRecorder = useRef<MediaRecorder | null>(null);
-
-	useEffect(() => {
-		requestMicrophonePermission();
-	}, []);
 
 	function releaseMicrophonePermission(): void {
 		if (stream) {
@@ -44,6 +41,7 @@ const AudioRecorder = () => {
 	};
 
 	const startRecording = async () => {
+		requestMicrophonePermission();
 		setRecordingStatus("recording");
 		if (!stream) {
 			navigator.mediaDevices.getUserMedia({
@@ -79,44 +77,10 @@ const AudioRecorder = () => {
 		};
 	};
 
-	const handlePressStart = (
-		e: React.PointerEvent<HTMLButtonElement> | React.TouchEvent<HTMLButtonElement>
-	) => {
-		e.preventDefault();
-		if (recordingStatus === "inactive") {
-			startRecording();
-		}
-	};
-
-	const handlePressEnd = (
-		e: React.PointerEvent<HTMLButtonElement> | React.TouchEvent<HTMLButtonElement>
-	) => {
-		e.preventDefault();
-		if (recordingStatus === "recording") {
-			stopRecording();
-		}
-	};
-
-	const handlePressCancel = (e: React.PointerEvent<HTMLButtonElement>) => {
-		e.preventDefault();
-		if (recordingStatus === "recording") {
-			stopRecording();
-		}
-	};
-
 	return (
 		<main>
 			<div className={styles["audio-controls"]}>
-				<button
-					type="button"
-					onPointerDown={handlePressStart}
-					onPointerUp={handlePressEnd}
-					onPointerLeave={handlePressCancel}
-					onTouchStart={handlePressStart}
-					onTouchEnd={handlePressEnd}
-				>
-					{recordingStatus === "recording" ? "Release to Stop" : "Hold to Record"}
-				</button>
+				<LongPressButton onLongPressStart={startRecording} onLongPressEnd={stopRecording} />
 			</div>
 			{audio ? (
 				<div className={styles["audio-player"]}>
