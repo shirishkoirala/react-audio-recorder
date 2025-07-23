@@ -57,8 +57,7 @@ const AudioRecorder = () => {
 				let localAudioChunks: Blob[] = [];
 
 				mediaRecorder.current.ondataavailable = (event) => {
-					if (typeof event.data === "undefined") return;
-					if (event.data.size === 0) return;
+					if (!event.data || event.data.size === 0) return;
 					localAudioChunks.push(event.data);
 				};
 
