@@ -6,6 +6,7 @@ const mimeType = "audio/webm";
 
 const AudioRecorder = () => {
 	const [recordingStatus, setRecordingStatus] = useState("inactive");
+	const [permissionState, setPermissionState] = useState<'prompt' | 'granted' | 'denied'>('prompt');
 	const [stream, setStream] = useState<MediaStream | null>(null);
 	const [audio, setAudio] = useState<string | null>(null);
 	const [audioChunks, setAudioChunks] = useState<Blob[]>([]);
@@ -25,9 +26,10 @@ const AudioRecorder = () => {
 				navigator.mediaDevices.getUserMedia({
 					audio: true,
 				}).then((stream) => {
+					setPermissionState('granted');
+					setStream(stream);
 					stream.getTracks().forEach(track => track.stop());
 				});
-
 			} catch (err) {
 				if (err instanceof Error) {
 					alert(err.message);
@@ -41,27 +43,30 @@ const AudioRecorder = () => {
 	};
 
 	const startRecording = async () => {
-		requestMicrophonePermission();
 		setRecordingStatus("recording");
-		if (!stream) {
-			navigator.mediaDevices.getUserMedia({
-				audio: true,
-			}).then((stream) => {
-				setStream(stream);
-				const media = new MediaRecorder(stream, { mimeType: mimeType });
-				mediaRecorder.current = media;
-				mediaRecorder.current.start();
-
-				let localAudioChunks: Blob[] = [];
-
-				mediaRecorder.current.ondataavailable = (event) => {
-					if (!event.data || event.data.size === 0) return;
-					localAudioChunks.push(event.data);
-				};
-
-				setAudioChunks(localAudioChunks);
-			});
+		if (!stream || permissionState !== 'granted') {
+			requestMicrophonePermission();
+			return;
 		}
+		navigator.mediaDevices.getUserMedia({
+			audio: true,
+		}).then((stream) => {
+			setPermissionState('granted');
+			setStream(stream);
+			const media = new MediaRecorder(stream, { mimeType: mimeType });
+			mediaRecorder.current = media;
+			mediaRecorder.current.start();
+
+			let localAudioChunks: Blob[] = [];
+
+			mediaRecorder.current.ondataavailable = (event) => {
+				if (!event.data || event.data.size === 0) return;
+				localAudioChunks.push(event.data);
+			};
+
+			setAudioChunks(localAudioChunks);
+		});
+
 	};
 
 	const stopRecording = () => {
@@ -81,6 +86,11 @@ const AudioRecorder = () => {
 		<main>
 			<div className={styles["audio-controls"]}>
 				<LongPressButton onLongPressStart={startRecording} onLongPressEnd={stopRecording} />
+				{recordingStatus === "recording" ? (
+					<p className={styles["status-text"]}>Recording...</p>
+				) : (
+					<p className={styles["status-text"]}>Press and hold to record</p>
+				)}
 			</div>
 			{audio ? (
 				<div className={styles["audio-player"]}>
