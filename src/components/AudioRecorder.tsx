@@ -6,7 +6,7 @@ const mimeType = "audio/webm";
 
 const AudioRecorder = () => {
 	const [recordingStatus, setRecordingStatus] = useState("inactive");
-	const [permissionState, setPermissionState] = useState<'prompt' | 'granted' | 'denied'>('prompt');
+	const [permissionState, setPermissionState] = useState<'prompt' | 'granted' | 'denied' | 'not-found'>('prompt');
 	const [stream, setStream] = useState<MediaStream | null>(null);
 	const [audio, setAudio] = useState<string | null>(null);
 	const [audioChunks, setAudioChunks] = useState<Blob[]>([]);
@@ -22,32 +22,33 @@ const AudioRecorder = () => {
 
 	const requestMicrophonePermission = async () => {
 		if ("MediaRecorder" in window) {
-			try {
-				navigator.mediaDevices.getUserMedia({
-					audio: true,
-				}).then((stream) => {
-					setPermissionState('granted');
-					setStream(stream);
-					stream.getTracks().forEach(track => track.stop());
-				});
-			} catch (err) {
-				if (err instanceof Error) {
-					alert(err.message);
-				} else {
-					alert("An unknown error occurred.");
+			navigator.mediaDevices.getUserMedia({
+				audio: true,
+			}).then((stream) => {
+				setPermissionState('granted');
+				setStream(stream);
+				stream.getTracks().forEach(track => track.stop());
+			}).catch((err) => {
+				if (err.name === 'NotAllowedError') {
+					setPermissionState('denied');
+					alert("Permission denied. Please allow microphone access.");
+				} else if (err.name === 'NotFoundError') {
+					setPermissionState('not-found');
+					alert("No microphone found. Please connect a microphone.");
 				}
-			}
+			});
 		} else {
+			setPermissionState('not-found');
 			alert("The MediaRecorder API is not supported in your browser.");
 		}
 	};
 
 	const startRecording = async () => {
-		setRecordingStatus("recording");
 		if (!stream || permissionState !== 'granted') {
 			requestMicrophonePermission();
 			return;
 		}
+		setRecordingStatus("recording");
 		navigator.mediaDevices.getUserMedia({
 			audio: true,
 		}).then((stream) => {
