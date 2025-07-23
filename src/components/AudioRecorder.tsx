@@ -1,50 +1,21 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef } from "react";
 import styles from "./AudioRecorder.module.css";
 import LongPressButton from "./LongPressButton";
+import { useMicrophonePermission } from "../hooks/useMicrophonePermission";
 
 const mimeType = "audio/webm";
 
 const AudioRecorder = () => {
 	const [recordingStatus, setRecordingStatus] = useState("inactive");
-	const [permissionState, setPermissionState] = useState<'prompt' | 'granted' | 'denied' | 'not-found'>('prompt');
-	const [stream, setStream] = useState<MediaStream | null>(null);
 	const [audio, setAudio] = useState<string | null>(null);
 	const [audioChunks, setAudioChunks] = useState<Blob[]>([]);
 
 	const mediaRecorder = useRef<MediaRecorder | null>(null);
-
-	function releaseMicrophonePermission(): void {
-		if (stream) {
-			stream.getTracks().forEach(track => track.stop());
-			setStream(null);
-		}
-	}
-
-	const requestMicrophonePermission = async () => {
-		if ("MediaRecorder" in window) {
-			navigator.mediaDevices.getUserMedia({
-				audio: true,
-			}).then((stream) => {
-				setPermissionState('granted');
-				setStream(stream);
-				stream.getTracks().forEach(track => track.stop());
-			}).catch((err) => {
-				if (err.name === 'NotAllowedError') {
-					setPermissionState('denied');
-					alert("Permission denied. Please allow microphone access.");
-				} else if (err.name === 'NotFoundError') {
-					setPermissionState('not-found');
-					alert("No microphone found. Please connect a microphone.");
-				}
-			});
-		} else {
-			setPermissionState('not-found');
-			alert("The MediaRecorder API is not supported in your browser.");
-		}
-	};
+	const { permissionState, releaseMicrophonePermission, requestMicrophonePermission
+		, streamRef } = useMicrophonePermission();
 
 	const startRecording = async () => {
-		if (!stream || permissionState !== 'granted') {
+		if (!streamRef || permissionState !== 'granted') {
 			requestMicrophonePermission();
 			return;
 		}
@@ -52,8 +23,7 @@ const AudioRecorder = () => {
 		navigator.mediaDevices.getUserMedia({
 			audio: true,
 		}).then((stream) => {
-			setPermissionState('granted');
-			setStream(stream);
+			streamRef.current = stream;
 			const media = new MediaRecorder(stream, { mimeType: mimeType });
 			mediaRecorder.current = media;
 			mediaRecorder.current.start();
